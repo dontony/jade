@@ -38,6 +38,12 @@ jade_defs.schematic_view = function(jade) {
             .mousedown(schematic_mouse_down)
             .dblclick(schematic_double_click)
             .keydown(schematic_key_down);
+        console.log($(this.diagram.canvas));
+        $(this.diagram.canvas)
+            .bind("touchstart", schematic_touch_start)
+            .bind("touchend", schematic_touch_end)
+            .bind("touchmove", schematic_touch_move);
+
 
         this.toolbar = new jade.Toolbar(this.diagram);
 
@@ -311,6 +317,96 @@ jade_defs.schematic_view = function(jade) {
     //  Event handling
     //
     ////////////////////////////////////////////////////////////////////////////////
+
+// $(this.diagram.canvas)
+//             .mousemove(schematic_mouse_move)
+//             .mouseover(schematic_mouse_enter)
+//             .mouseout(schematic_mouse_leave)
+//             .mouseup(schematic_mouse_up)
+//             .mousedown(schematic_mouse_down)
+//             .dblclick(schematic_double_click)
+//             .keydown(schematic_key_down)
+//             .touchstart(schematic_touch_start)
+//             .touchend(schematic_touch_end)
+//             .touchmove(schematic_touch_move)
+    function schematic_touch_start(event) {
+        //modeled after mouse_down
+        event.preventDefault();
+        event.originalEvent.preventDefault();
+        console.log("SCHEM TOUCH START");
+        var diagram = event.target.diagram;
+        diagram.event_coords(event);
+
+        // see if user is trying to pan or zoom
+        if (diagram.pan_zoom()) return false;
+
+        // TODO how to increase size of connection point
+        // is mouse over a connection point?  If so, start dragging a wire
+        var dx = Math.abs(diagram.aspect_x - diagram.cursor_x);
+        var dy = Math.abs(diagram.aspect_y - diagram.cursor_y);
+        var cplist = diagram.aspect.connection_points[diagram.cursor_x + ',' + diagram.cursor_y];
+        if (!diagram.aspect.read_only() && dx <= jade.model.connection_point_radius && dy <= jade.model.connection_point_radius && cplist && !event.shiftKey) {
+            diagram.unselect_all(-1);
+            diagram.redraw_background();
+            diagram.wire = [diagram.cursor_x, diagram.cursor_y, diagram.cursor_x, diagram.cursor_y];
+        }
+        else diagram.start_select(event.shiftKey);
+
+        //event.preventDefault();
+        return false;
+    }
+
+    function schematic_touch_move(event) {
+        //modeled after mouse_move
+        event.preventDefault();
+        event.originalEvent.preventDefault();
+        console.log("SCHEM TOUCH MOVE");
+        var diagram = event.target.diagram;
+        diagram.event_coords(event);
+
+        if (diagram.wire) {
+            // update new wire end point
+            diagram.wire[2] = diagram.cursor_x;
+            diagram.wire[3] = diagram.cursor_y;
+            diagram.redraw();
+        } else {
+            //TODO add a longpress clause here
+            diagram.mouse_move();
+        }
+
+        //event.preventDefault();
+        return false;
+    }
+
+    function schematic_touch_end(event) {
+        //modeled after mouse_up
+        event.preventDefault();
+        event.originalEvent.preventDefault();
+        console.log("SCHEM TOUCH END");
+        var diagram = event.target.diagram;
+
+        // drawing a new wire
+        if (diagram.wire) {
+            var r = diagram.wire;
+            diagram.wire = undefined;
+
+            if (r[0] != r[2] || r[1] != r[3]) {
+                // insert wire component
+                diagram.aspect.start_action();
+                var wire = diagram.aspect.add_wire(r[0], r[1], r[2], r[3], 0);
+                wire.selected = true;
+                diagram.aspect.end_action();
+                diagram.redraw_background();
+            }
+            else diagram.redraw();
+        } else {
+            //TODO add a longpress clause here
+            diagram.mouse_up(event.shiftKey);
+        }
+
+        //event.preventDefault();
+        return false;
+    }
 
     // process keystrokes, consuming those that are meaningful to us
     function schematic_key_down(event) {
@@ -1295,7 +1391,10 @@ jade_defs.schematic_view = function(jade) {
                 .mouseover(part_enter)
                 .mouseout(part_leave)
                 .mousedown(part_mouse_down)
-                .mouseup(part_mouse_up);
+                .mouseup(part_mouse_up)
+                .bind("touchstart", part_touch_start)
+                .bind("touchend", part_touch_end)
+                .bind("touchmove", part_touch_move);
 
             // you can only edit parts in the parts bin if in hierarchical mode
             if (parts_bin.editor.jade.configuration.hierarchical && part.component.can_view()) {
@@ -1462,6 +1561,54 @@ jade_defs.schematic_view = function(jade) {
         var yy = Math.floor((y - this.origin_y) * this.scale) + 0.5;
         c.fillText(text, xx, yy);
     };
+
+// part.canvas
+//                 .mouseover(part_enter)
+//                 .mouseout(part_leave)
+//                 .mousedown(part_mouse_down)
+//                 .mouseup(part_mouse_up)
+//                 .touchstart(part_touch_start)
+//                 .touchend(part_touch_end)
+//                 .touchmove(part_touch_move)
+
+    function part_touch_start(event) {
+        //model after a mouseover AND a mousedown
+        event.preventDefault();
+        console.log("PART TOUCH START");
+        var part = event.target.part;
+        var tip = "TOUCH_EVENT, "
+        tip += part.component.module.properties.tool_tip;
+        if (tip !== undefined) tip = tip.value;
+        else tip = part.component.type();
+        tip += ': drag onto diagram to insert';
+        if (part.can_edit) tip += ', double click to edit';
+        part.diagram.message(tip);
+
+        part.select(true);
+        part.diagram.new_part = part;
+
+        return false;
+    }
+    function part_touch_end(event) {
+        //modeled after a mouseleave and a mouseup
+        console.log("PART TOUCH END");
+        event.preventDefault();
+        var part = event.target.part;
+
+        part.select(false);
+        part.diagram.new_part = undefined;
+
+        part.diagram.message('');
+        return false;
+    }
+    function part_touch_move(event) {
+        event.preventDefault();
+        var part = event.target.part;
+
+        part.select(false);
+        part.diagram.new_part = undefined;
+        return false;
+    }
 
     function part_enter(event) {
         var part = event.target.part;
