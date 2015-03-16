@@ -39,6 +39,7 @@ jade_defs.schematic_view = function(jade) {
             .dblclick(schematic_double_click)
             .keydown(schematic_key_down);
         console.log($(this.diagram.canvas));
+
         $(this.diagram.canvas)
             .bind("touchstart", schematic_touch_start)
             .bind("touchend", schematic_touch_end)
@@ -318,17 +319,6 @@ jade_defs.schematic_view = function(jade) {
     //
     ////////////////////////////////////////////////////////////////////////////////
 
-// $(this.diagram.canvas)
-//             .mousemove(schematic_mouse_move)
-//             .mouseover(schematic_mouse_enter)
-//             .mouseout(schematic_mouse_leave)
-//             .mouseup(schematic_mouse_up)
-//             .mousedown(schematic_mouse_down)
-//             .dblclick(schematic_double_click)
-//             .keydown(schematic_key_down)
-//             .touchstart(schematic_touch_start)
-//             .touchend(schematic_touch_end)
-//             .touchmove(schematic_touch_move)
     function schematic_touch_start(event) {
         //modeled after mouse_down
         event.preventDefault();
@@ -422,6 +412,7 @@ jade_defs.schematic_view = function(jade) {
     }
 
     function schematic_mouse_enter(event) {
+        console.log("schem_mouse_enter");
         var diagram = event.target.diagram;
 
         // see if user has selected a new part
@@ -1394,7 +1385,7 @@ jade_defs.schematic_view = function(jade) {
                 .mouseup(part_mouse_up)
                 .bind("touchstart", part_touch_start)
                 .bind("touchend", part_touch_end)
-                .bind("touchmove", part_touch_move);
+                // .bind("touchmove", part_touch_move);
 
             // you can only edit parts in the parts bin if in hierarchical mode
             if (parts_bin.editor.jade.configuration.hierarchical && part.component.can_view()) {
@@ -1576,12 +1567,14 @@ jade_defs.schematic_view = function(jade) {
         event.preventDefault();
         console.log("PART TOUCH START");
         var part = event.target.part;
-        var tip = "TOUCH_EVENT, "
-        tip += part.component.module.properties.tool_tip;
-        if (tip !== undefined) tip = tip.value;
-        else tip = part.component.type();
+        console.log(part);
+        var tip = part.component.module.properties.tool_tip;
+        if (tip !== undefined) 
+            tip = tip.value;
+        else 
+            tip = part.component.type();
         tip += ': drag onto diagram to insert';
-        if (part.can_edit) tip += ', double click to edit';
+        if (part.can_edit) tip += ', double double-clicked to edit';
         part.diagram.message(tip);
 
         part.select(true);
@@ -1601,7 +1594,7 @@ jade_defs.schematic_view = function(jade) {
         part.diagram.message('');
         return false;
     }
-    function part_touch_move(event) {
+    /*function part_touch_move(event) {
         event.preventDefault();
         var part = event.target.part;
 
@@ -1609,7 +1602,7 @@ jade_defs.schematic_view = function(jade) {
         part.diagram.new_part = undefined;
         return false;
     }
-
+    */
     function part_enter(event) {
         var part = event.target.part;
 

@@ -1226,8 +1226,9 @@ jade_defs.top_level = function(jade) {
         if(event.pageX && event.pageY) {
             this.mouse_x = event.pageX - pos.left;
             this.mouse_y = event.pageY - pos.top;
-        } else {//it is a touch event, so we need to access the original touch
-            //we are now only accounting for one touch, so out of the possible
+        } else {
+            //it is a touch event, so we need to access the original touch
+            // we are now only accounting for one touch, so out of the possible
             // touches on the stroke, we only get the first one.
             this.mouse_x = event.originalEvent.touches[0].pageX - pos.left;
             this.mouse_y = event.originalEvent.touches[0].pageY - pos.top;
@@ -1236,9 +1237,9 @@ jade_defs.top_level = function(jade) {
         this.aspect_y = this.mouse_y / this.scale + this.origin_y;
         this.cursor_x = this.on_grid(this.aspect_x);
         this.cursor_y = this.on_grid(this.aspect_y);
-        console.log("Mouse: " + this.mouse_x + ", " + this.mouse_y);
-        console.log("Aspect: " + this.aspect_x + ", " + this.aspect_y);
-        console.log("Cursor: " + this.cursor_x + ", " + this.cursor_y);
+        // console.log("Mouse: " + this.mouse_x + ", " + this.mouse_y);
+        // console.log("Aspect: " + this.aspect_x + ", " + this.aspect_y);
+        // console.log("Cursor: " + this.cursor_x + ", " + this.cursor_y);
     };
 
     ///////////////////////////////////////////////////////////////////////////////
