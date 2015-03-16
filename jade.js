@@ -1221,12 +1221,24 @@ jade_defs.top_level = function(jade) {
     //   cursor_x,cursor_y = aspect coords rounded to nearest grid point
     Diagram.prototype.event_coords = function(event) {
         var pos = $(this.canvas).offset();
-        this.mouse_x = event.pageX - pos.left;
-        this.mouse_y = event.pageY - pos.top;
+        console.log(pos);
+        console.log(event);
+        if(event.pageX && event.pageY) {
+            this.mouse_x = event.pageX - pos.left;
+            this.mouse_y = event.pageY - pos.top;
+        } else {//it is a touch event, so we need to access the original touch
+            //we are now only accounting for one touch, so out of the possible
+            // touches on the stroke, we only get the first one.
+            this.mouse_x = event.originalEvent.touches[0].pageX - pos.left;
+            this.mouse_y = event.originalEvent.touches[0].pageY - pos.top;
+        }
         this.aspect_x = this.mouse_x / this.scale + this.origin_x;
         this.aspect_y = this.mouse_y / this.scale + this.origin_y;
         this.cursor_x = this.on_grid(this.aspect_x);
         this.cursor_y = this.on_grid(this.aspect_y);
+        console.log("Mouse: " + this.mouse_x + ", " + this.mouse_y);
+        console.log("Aspect: " + this.aspect_x + ", " + this.aspect_y);
+        console.log("Cursor: " + this.cursor_x + ", " + this.cursor_y);
     };
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -1303,6 +1315,7 @@ jade_defs.top_level = function(jade) {
     };
 
     // handle events in pan/zoom control
+    //TODO add pan zoom via touch in this function
     Diagram.prototype.pan_zoom = function() {
         var mx = this.mouse_x;
         var my = this.mouse_y;
