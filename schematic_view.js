@@ -340,7 +340,7 @@ jade_defs.schematic_view = function(jade) {
             diagram.redraw_background();
             diagram.wire = [diagram.cursor_x, diagram.cursor_y, diagram.cursor_x, diagram.cursor_y];
         }
-        else diagram.start_select(event.shiftKey);
+        else diagram.start_select(event.shiftKey, true);
 
         //event.preventDefault();
         return false;
@@ -391,7 +391,7 @@ jade_defs.schematic_view = function(jade) {
             else diagram.redraw();
         } else {
             //TODO add a longpress clause here
-            diagram.mouse_up(event.shiftKey);
+            diagram.mouse_up(event.shiftKey, true);
         }
 
         //event.preventDefault();

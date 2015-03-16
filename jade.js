@@ -1353,7 +1353,7 @@ jade_defs.top_level = function(jade) {
     };
 
     // handle the (possible) start of a selection
-    Diagram.prototype.start_select = function(shiftKey) {
+    Diagram.prototype.start_select = function(shiftKey, touchStart) {
         // give all components a shot at processing the selection event
         var which = -1;
         var diagram = this; // for closure
@@ -1380,9 +1380,14 @@ jade_defs.top_level = function(jade) {
             // we just clicked on
             if (!reselect) this.unselect_all(which);
 
+            if (touchStart) 
+                this.touch_pan = true;
             // if there's nothing to drag, set up a selection rectangle
-            if (!this.dragging) this.select_rect = [this.mouse_x, this.mouse_y,
-                                                    this.mouse_x, this.mouse_y];
+            else if (!this.dragging) {
+                this.select_rect = [this.mouse_x, this.mouse_y,
+                                    this.mouse_x, this.mouse_y];
+
+            } 
         }
 
         this.redraw_background();
@@ -1409,7 +1414,36 @@ jade_defs.top_level = function(jade) {
             // update moving corner of selection rectangle
             this.select_rect[2] = this.mouse_x;
             this.select_rect[3] = this.mouse_y;
-        }
+        } 
+        else if (this.touch_pan) {
+            // see how far we moved
+            var dx = this.cursor_x - this.drag_x;
+            var dy = this.cursor_y - this.drag_y;
+            var DELTA_PAN = this.canvas.height / ( 16 * this.scale);
+            console.log(DELTA_PAN + "  deltas dx: " + dx + "  dy: " + dy);
+            if (Math.abs(dx) >= DELTA_PAN || Math.abs(dy) >= DELTA_PAN) {
+                console.log("TOUCH PAN");
+                // update position for next time
+                this.drag_x = this.cursor_x;
+                this.drag_y = this.cursor_y;
+
+                dx = DELTA_PAN * Math.round(dx/DELTA_PAN);
+                dy = DELTA_PAN * Math.round(dy/DELTA_PAN);
+                var temp_x = this.origin_x - dx;
+                var temp_y = this.origin_y - dy;
+                if (temp_x > this.origin_min * this.grid && temp_x < this.origin_max * this.grid) 
+                    this.origin_x = temp_x;
+                if (temp_y > this.origin_min * this.grid && temp_y < this.origin_max * this.grid) 
+                    this.origin_y = temp_y;
+            }
+            else 
+                return false;
+
+            this.redraw_background();
+        } 
+        else 
+            return false;
+
 
         // just redraw dynamic components
         this.redraw();
@@ -1442,6 +1476,9 @@ jade_defs.top_level = function(jade) {
 
             this.select_rect = undefined;
             this.redraw_background();
+        }
+        else if (this.touch_pan) {
+            this.touch_pan = false;
         }
     };
 
