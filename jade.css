@@ -14,11 +14,20 @@
       */
     font: 12px sans-serif;
 }
+.jade-about {
+    width: 300px;
+    background-color: white;
+    padding: 2em;
+}
+
 #savelibs {
     margin-right: 10px;
 }
 .jade-module-select {
     padding: 3px;
+}
+.jade-panning {
+    cursor: move;
 }
 .jade-settings-popup {
     display: none;
@@ -106,7 +115,7 @@
 }
 .jade-xparts-resize {
     float: right;
-    cursor: ew-resize;
+    cursor: col-resize;
     width: 3px;
     margin-right: 3px;
     margin-left: 3px;

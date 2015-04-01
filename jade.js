@@ -5,6 +5,7 @@
 var jade_defs = {};
 var jade_dump_json;   // function for grabbing JSON dumps of modules
 var jade_load_json;   // function for loading JSON dumps of modules
+var jade_load_edx; // function for loading student edX submissions into editor
 
 // "new jade_defs.jade()" will build a self-contained jade object so we can
 // have multiple instances on the same webpage that don't share any
@@ -33,6 +34,13 @@ jade_defs.jade = function() {
 
 jade_defs.top_level = function(jade) {
 
+    var version = "Jade 2.2.37 (2015 \u00A9 MIT EECS)";
+
+    var about_msg = version +
+            "<p>Chris Terman wrote the schematic entry, testing and gate-level simulation tools." +
+            "<p>Jacob White wrote the simulation engine for the device-level simulation tools."+
+            "<p>We are grateful to Quanta Computer Incorporated for their support of the development of the Jade schematic entry and simulation tool as part of a research project on educational technologies with the MIT Computer Science and Artificial Intelligence Laboratory.";
+
     //////////////////////////////////////////////////////////////////////
     //
     // Editor framework
@@ -55,11 +63,17 @@ jade_defs.top_level = function(jade) {
                            ' <div id="module-tools" class="jade-toolbar"></div>' +
                            ' <div class="jade-tabs-div"></div>' +
                            ' <div class="jade-resize-icon"></div>' +
-                           ' <div class="jade-version">Jade 2.2.25 (2015 \u00A9 MIT EECS)</div>' +
+                           ' <div class="jade-version"><a href="#">'+version+'</a></div>' +
                            ' <div class="jade-status"><span id="message"></span></div>' +
                            '</div>');
         $('.jade-resize-icon',this.top_level).append(jade.icons.resize_icon);
         $(owner).append(this.top_level);
+
+        $('.jade-version a',this.top_level).on('click',function (event) {
+            jade_window('About Jade',$('<div class="jade-about"></div>').html(about_msg),$(owner).offset());
+            event.preventDefault();
+            return false;
+        });
 
         this.status = this.top_level.find('#message');
 
@@ -69,9 +83,19 @@ jade_defs.top_level = function(jade) {
         this.module_tools.append(this.module_tool(jade.icons.edit_module_icon,'edit-module','Edit/create module',edit_module,'hierarchy-tool'));
         this.module_tools.append(this.module_tool(jade.icons.copy_module_icon,'copy-module','Copy current module',copy_module,'hierarchy-tool'));
         this.module_tools.append(this.module_tool(jade.icons.delete_module_icon,'delete-module','Delete current module',delete_module,'hierarchy-tool'));
-        this.module_tools.append(this.module_tool(jade.icons.download_icon,'download-modules','Save modules to local storage',download_modules));
-        this.module_tools.append(this.module_tool(jade.icons.upload_icon,'upload-modules','Select modules to load from local storage',upload_modules,'hierarchy-tool'));
+        this.module_tools.append(this.module_tool(jade.icons.download_icon,'download-modules','Save modules to module clipboard',download_modules));
+        this.module_tools.append(this.module_tool(jade.icons.upload_icon,'upload-modules','Select modules to load from module clipboard',upload_modules));
         this.module_tools.append(this.module_tool(jade.icons.recycle_icon,'start-over','Discard all work on this problem and start over',start_over));
+
+        /*
+        var mailto = $('<a href="#"><span class="fa fa-lg fa-envelope-o"></span>"');
+        mailto.on('click',function (event) {
+            window.location = "mailto:cjt@mit.edu?Subject=&body=bar";
+            return false;
+        });
+        this.module_tools.append(mailto);
+         */
+        
 
         $('#module-select',this.module_tools).on('change',function () {
             owner.jade.edit($(this).val());
@@ -136,7 +160,7 @@ jade_defs.top_level = function(jade) {
 
         var j = this;  // for closure
         tool.on('click',function (event) {
-            if (action) action(j);
+            if (action) action(j,event);
             event.preventDefault();
             return false;
         });
@@ -167,6 +191,15 @@ jade_defs.top_level = function(jade) {
     // helper function for loading json -- make accessible at top level
     jade_load_json = function (json) {
         jade.model.load_json(JSON.parse(json));
+    };
+
+    jade_load_edx = function(s) {
+        var edx_state = JSON.parse(s).state;
+        var design = JSON.parse(edx_state).state;
+        jade.model.load_json(design);
+        var modules = Object.keys(design);
+        $('.jade')[0].jade.edit(modules[0]);
+        return modules;
     };
 
     // initialize editor from configuration object
@@ -259,6 +292,7 @@ jade_defs.top_level = function(jade) {
 
         // starting module?
         var edit = this.configuration.edit || '/user/untitled';
+        if (edit[0] != '/') edit = '/user/'+edit;
         var mname = edit.split('.');          // module.aspect
         this.edit(mname[0]);  // select module
         if (mname.length > 1) this.show(mname[1]);
@@ -418,6 +452,8 @@ jade_defs.top_level = function(jade) {
 
         function edit() {
             var name = $(input).val();
+            // force module names to be a pathname, in /user by default
+            if (name[0] != '/') name = '/user/'+name;
 
             function try_again(msg) {
                 $('#msg',content).text(msg);
@@ -513,7 +549,25 @@ jade_defs.top_level = function(jade) {
         localStorage.setItem('jade_saved_modules',JSON.stringify(saved_modules));
     };
 
-    function upload_modules(j) {
+    function upload_modules(j,event) {
+        if (event && event.shiftKey) {
+            var content = $('<div style="margin:10px;"><textarea rows="5" cols="80"/></div>');
+            var offset = $('.jade-tabs-div',j.top_level).offset();
+
+            function load_answer() {
+                var s = eval($('textarea',content).val());
+                var edx_state = JSON.parse(s).state;
+                var design = JSON.parse(edx_state).state;
+                jade.model.load_json(design);
+                var modules = Object.keys(design);
+                j.edit(modules[0]);
+                console.log(modules);
+            }
+
+            dialog('Load student answer',content,load_answer,offset);
+            return;
+        }
+
         // get modules from localStorage
         var modules = JSON.parse(localStorage.getItem('jade_saved_modules') || '{}');
         var mnames = Object.keys(modules).sort();
@@ -528,6 +582,8 @@ jade_defs.top_level = function(jade) {
         // build a dialog using up to 3 columns to list modules
         var row = $('<tr valign="top"></tr>');
         var ncols = Math.max(3,Math.ceil(select.length/10));
+        var select_all = $('<td><a href="">Select all</a></td>');
+        select_all.attr('colspan',ncols.toString());
         var nitems = Math.ceil(select.length/ncols);
         var col,index=0,i;
         while (ncols--) {
@@ -536,7 +592,14 @@ jade_defs.top_level = function(jade) {
                 col.append(select[index++]);
             row.append(col);
         }
-        var contents = $('<table></table>').append(row);
+        var contents = $('<table></table>').append(row,$('<tr align="center"></tr>').append(select_all));
+
+        // implement select all functionality
+        $('a',select_all).on('click',function (event) {
+            $('input',row).prop('checked',true);
+            event.preventDefault();
+            return false;
+        });
 
         // find checked items and load them
         function upload () {
@@ -667,7 +730,7 @@ jade_defs.top_level = function(jade) {
         // ethanschoonover.com
         this.background_style = 'rgb(250,250,250)'; // backgrund color for diagram [base3]
         this.grid_style = 'rgb(230,230,230)'; // grid on background
-        this.control_style = 'rgb(180,180,180)'; // grid on background [base1]
+        this.control_style = 'rgb(0,0,0)'; // grid on background [base1]
         this.normal_style = 'rgb(88,110,117)'; // default drawing color [base01]
         this.component_style = 'rgb(38,139,210)'; // color for unselected components [blue]
         this.selected_style = 'rgb(211,54,130)'; // highlight color for selected components [magenta]
@@ -851,7 +914,7 @@ jade_defs.top_level = function(jade) {
         diagram.redraw(); // digram didn't change, but toolbar status may have
     }
 
-    function diagram_paste(diagram) {
+    function diagram_paste(diagram,keystroke) {
         var clipboard = clipboards[diagram.editor.editor_name];
         var i, c;
 
@@ -874,12 +937,17 @@ jade_defs.top_level = function(jade) {
         diagram.unselect_all(-1);
         diagram.redraw_background(); // so we see any components that got unselected
 
+        // for keystroke, position relative to cursor
+        // for toolbar button, position relative to original location
+        var px = keystroke ? diagram.cursor_x : left + 16;
+        var py = keystroke ? diagram.cursor_y : top + 16;
+
         // make clones of components on the clipboard, positioning
         // them relative to the cursor
         diagram.aspect.start_action();
         for (i = clipboard.length - 1; i >= 0; i -= 1) {
             c = clipboard[i];
-            var new_c = c.clone(diagram.cursor_x + (c.coords[0] - left), diagram.cursor_y + (c.coords[1] - top));
+            var new_c = c.clone(px + (c.coords[0] - left), py + (c.coords[1] - top));
             new_c.set_select(true);
             new_c.add(diagram.aspect);
         }
@@ -1039,6 +1107,8 @@ jade_defs.top_level = function(jade) {
     Diagram.prototype.redraw = function() {
         var c = this.canvas.getContext('2d');
         this.c = c;
+
+        c.lineCap = 'round';
 
         // put static image in the background.  Make sure we don't scale twice!
         c.drawImage(this.bg_image, 0, 0, this.bg_image.width/this.pixelRatio, this.bg_image.height/this.pixelRatio);
@@ -1221,8 +1291,8 @@ jade_defs.top_level = function(jade) {
     //   cursor_x,cursor_y = aspect coords rounded to nearest grid point
     Diagram.prototype.event_coords = function(event) {
         var pos = $(this.canvas).offset();
-        console.log(pos);
-        console.log(event);
+        //console.log(pos);
+        //console.log(event);
         if(event.pageX && event.pageY) {
             this.mouse_x = event.pageX - pos.left;
             this.mouse_y = event.pageY - pos.top;
@@ -1232,6 +1302,20 @@ jade_defs.top_level = function(jade) {
             // touches on the stroke, we only get the first one.
             this.mouse_x = event.originalEvent.touches[0].pageX - pos.left;
             this.mouse_y = event.originalEvent.touches[0].pageY - pos.top;
+
+            this.touches = [];
+            var touch_count = 0;
+            while (touch_count < event.originalEvent.touches.length) {
+                new_touch = {};
+                new_touch.touch_x = event.originalEvent.touches[touch_count].pageX - pos.left
+                new_touch.touch_y = event.originalEvent.touches[touch_count].pageY - pos.top
+                this.touches[touch_count] = new_touch;
+                touch_count++;
+            }
+            if (this.touches.length > 1) {
+                console.log("MULTIPLE TOUCHES!");
+                console.log(this.touches);
+            }
         }
         this.aspect_x = this.mouse_x / this.scale + this.origin_x;
         this.aspect_y = this.mouse_y / this.scale + this.origin_y;
@@ -1291,7 +1375,7 @@ jade_defs.top_level = function(jade) {
 
         // cmd/ctrl v: paste
         else if ((event.ctrlKey || event.metaKey) && code == 86) {
-            diagram_paste(this);
+            diagram_paste(this,true);
         }
 
         // cmd/ctrl x: cut
@@ -1332,13 +1416,15 @@ jade_defs.top_level = function(jade) {
                 delta = this.canvas.height / (8 * this.scale);
                 if (sy > 0) delta = -delta;
                 temp = this.origin_y - delta;
-                if (temp > this.origin_min * this.grid && temp < this.origin_max * this.grid) this.origin_y = temp;
+                if (temp > this.origin_min * this.grid && temp < this.origin_max * this.grid)
+                    this.origin_y = temp;
             }
             else { // E or W
                 delta = this.canvas.width / (8 * this.scale);
                 if (sx < 0) delta = -delta;
                 temp = this.origin_x + delta;
-                if (temp > this.origin_min * this.grid && temp < this.origin_max * this.grid) this.origin_x = temp;
+                if (temp > this.origin_min * this.grid && temp < this.origin_max * this.grid)
+                    this.origin_x = temp;
             }
         }
         else if (zx >= 0 && zx < 16 && zy >= 0 && zy < 48) { // click in zoom control
@@ -1353,7 +1439,7 @@ jade_defs.top_level = function(jade) {
     };
 
     // handle the (possible) start of a selection
-    Diagram.prototype.start_select = function(shiftKey, touchStart) {
+    Diagram.prototype.start_select = function(shiftKey) {
         // give all components a shot at processing the selection event
         var which = -1;
         var diagram = this; // for closure
@@ -1380,14 +1466,40 @@ jade_defs.top_level = function(jade) {
             // we just clicked on
             if (!reselect) this.unselect_all(which);
 
-            if (touchStart) 
-                this.touch_pan = true;
-            // if there's nothing to drag, set up a selection rectangle
+            if (this.touches) {
+                if (this.touches.length == 1) {
+                    this.panning = true;
+                    this.set_cursor_grid(1);
+                    this.drag_x = this.cursor_x;
+                    this.drag_y = this.cursor_y;  
+                    $(this.canvas).addClass('jade-panning');
+                } else {
+                    // if there are more than one touchp points, or if the user is 
+                    // inputting 2 or more fingers to drag, then we are doing a selection
+                    // rectangle
+                    touch_x_avg = this.touches[0].touch_x + this.touches[1].touch_x
+                    touch_x_avg /= 2
+
+                    touch_y_avg = this.touches[0].touch_y + this.touches[1].touch_y
+                    touch_y_avg /= 2
+                    this.select_rect = [touch_x_avg, touch_y_avg,
+                                    touch_x_avg, touch_y_avg];
+
+                }
+            }
+
+            // else if there's nothing to drag, set up a selection rectangle
             else if (!this.dragging) {
                 this.select_rect = [this.mouse_x, this.mouse_y,
                                     this.mouse_x, this.mouse_y];
-
-            } 
+            }
+        } else if (!this.dragging) {
+            // shift-click on background starts a pan
+            this.panning = true;
+            this.set_cursor_grid(1);
+            this.drag_x = this.cursor_x;
+            this.drag_y = this.cursor_y;
+            $(this.canvas).addClass('jade-panning');
         }
 
         this.redraw_background();
@@ -1412,39 +1524,49 @@ jade_defs.top_level = function(jade) {
         }
         else if (this.select_rect) {
             // update moving corner of selection rectangle
-            this.select_rect[2] = this.mouse_x;
-            this.select_rect[3] = this.mouse_y;
-        } 
-        else if (this.touch_pan) {
+            if(this.touches) {
+                touch_x_avg = this.touches[0].touch_x + this.touches[1].touch_x
+                touch_x_avg /= 2
+
+                touch_y_avg = this.touches[0].touch_y + this.touches[1].touch_y
+                touch_y_avg /= 2
+
+                this.select_rect[2] = touch_x_avg;
+                this.select_rect[3] = touch_y_avg;
+            } else {
+                this.select_rect[2] = this.mouse_x;
+                this.select_rect[3] = this.mouse_y;
+            }   
+        }
+        else if (this.panning) {
             // see how far we moved
             var dx = this.cursor_x - this.drag_x;
             var dy = this.cursor_y - this.drag_y;
-            var DELTA_PAN = this.canvas.height / ( 16 * this.scale);
-            console.log(DELTA_PAN + "  deltas dx: " + dx + "  dy: " + dy);
-            if (Math.abs(dx) >= DELTA_PAN || Math.abs(dy) >= DELTA_PAN) {
-                console.log("TOUCH PAN");
+            if (dx !== 0 || dy !== 0) {
                 // update position for next time
                 this.drag_x = this.cursor_x;
                 this.drag_y = this.cursor_y;
-
-                dx = DELTA_PAN * Math.round(dx/DELTA_PAN);
-                dy = DELTA_PAN * Math.round(dy/DELTA_PAN);
-                var temp_x = this.origin_x - dx;
-                var temp_y = this.origin_y - dy;
-                if (temp_x > this.origin_min * this.grid && temp_x < this.origin_max * this.grid) 
-                    this.origin_x = temp_x;
-                if (temp_y > this.origin_min * this.grid && temp_y < this.origin_max * this.grid) 
-                    this.origin_y = temp_y;
+//
+//                 dx = DELTA_PAN * Math.round(dx/DELTA_PAN);
+//                 dy = DELTA_PAN * Math.round(dy/DELTA_PAN);
+//                 var temp_x = this.origin_x - dx;
+//                 var temp_y = this.origin_y - dy;
+//                 if (temp_x > this.origin_min * this.grid && temp_x < this.origin_max * this.grid) 
+//                     this.origin_x = temp_x;
+//                 if (temp_y > this.origin_min * this.grid && temp_y < this.origin_max * this.grid) 
+//                     this.origin_y = temp_y;
+                var nx = this.origin_x - dx;
+                var ny = this.origin_y - dy;
+                if (nx > this.origin_min * this.grid && nx < this.origin_max * this.grid &&
+                    ny > this.origin_min * this.grid && ny < this.origin_max * this.grid) {
+                    this.origin_x = nx;
+                    this.origin_y = ny;
+                    this.drag_x -= dx;   // update drag coords to reflect new origin
+                    this.drag_y -= dy;
+                    this.redraw_background();
+                }
             }
-            else 
-                return false;
-
-            this.redraw_background();
-        } 
-        else 
-            return false;
-
-
+        }
         // just redraw dynamic components
         this.redraw();
     };
@@ -1477,8 +1599,9 @@ jade_defs.top_level = function(jade) {
             this.select_rect = undefined;
             this.redraw_background();
         }
-        else if (this.touch_pan) {
-            this.touch_pan = false;
+        if (this.panning) {
+            this.panning = false;
+            $(this.canvas).removeClass('jade-panning');
         }
     };
 
