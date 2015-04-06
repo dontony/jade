@@ -334,6 +334,10 @@ jade_defs.schematic_view = function(jade) {
     //
     ////////////////////////////////////////////////////////////////////////////////
 
+    var touch_start_time = 0;
+    var long_touch_callback = {};
+    var duration = 500; // 0.5 seconds
+
     function schematic_touch_start(event) {
         //modeled after mouse_down
         event.preventDefault();
@@ -356,7 +360,18 @@ jade_defs.schematic_view = function(jade) {
             diagram.wire = [diagram.cursor_x, diagram.cursor_y, diagram.cursor_x, diagram.cursor_y];
         }
         else diagram.start_select(event.shiftKey, true);
+        touch_start_time = new Date().getTime();
 
+        long_touch_timeout = setTimeout(function() {
+                   console.log("LONG PRESS touch timeout function");
+                   if (diagram.aspect && !diagram.aspect.read_only()) {
+                        // see if we double-clicked a component.  If so, edit it's properties
+                        diagram.aspect.map_over_components(function(c) {
+                            if (c.edit_properties(diagram, diagram.aspect_x, diagram.aspect_y)) return true;
+                            return false;
+                        });
+                    }
+                }, duration);
         //event.preventDefault();
         return false;
     }
@@ -378,7 +393,10 @@ jade_defs.schematic_view = function(jade) {
             //TODO add a longpress clause here
             diagram.mouse_move();
         }
-
+        //mouse/touch moved, so we nullify the timer, because a longpress only wanted 
+        // to be stationary
+        touch_start_time = null;
+        clearTimeout(long_touch_timeout);
         //event.preventDefault();
         return false;
     }
@@ -405,6 +423,12 @@ jade_defs.schematic_view = function(jade) {
             }
             else diagram.redraw();
         } else {
+            var current_time = new Date().getTime();
+            if (touch_start_time &&
+                 (current_time - touch_start_time) < duration) {
+                console.log("NOT LONG TAP ");
+                clearTimeout(long_touch_timeout);
+            }
             //TODO add a longpress clause here
             diagram.mouse_up(event.shiftKey, true);
         }
