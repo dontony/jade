@@ -1682,7 +1682,7 @@ jade_defs.schematic_view = function(jade) {
 
             // and start dragging it
             diagram.drag_begin();
-            
+
             diagram.redraw();
             diagram.canvas.focus(); // capture key strokes
             return false;
@@ -1698,9 +1698,9 @@ jade_defs.schematic_view = function(jade) {
         event.preventDefault();
         var part = event.target.part;
         part.event_coords(event, false);
+        //save the most recent event to the part, becauase a 
+        // touchend loses the original event
         part.originalEvent = event.originalEvent;
-        // part.select(false);
-        // part.diagram.new_part = undefined;
         // return false;
     }
 
