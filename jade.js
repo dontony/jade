@@ -1466,33 +1466,40 @@ jade_defs.top_level = function(jade) {
             // we just clicked on
             if (!reselect) this.unselect_all(which);
 
-            if (this.touches) {
-                if (this.touches.length == 1) {
-                    this.panning = true;
-                    this.set_cursor_grid(1);
-                    this.drag_x = this.cursor_x;
-                    this.drag_y = this.cursor_y;  
-                    $(this.canvas).addClass('jade-panning');
-                } else {
-                    // if there are more than one touchp points, or if the user is 
-                    // inputting 2 or more fingers to drag, then we are doing a selection
-                    // rectangle
-                    touch_x_avg = this.touches[0].touch_x + this.touches[1].touch_x
-                    touch_x_avg /= 2
+            /// if the user is not dragging a shape, then we are either
+            // panning around the schematic canvas, or doing a select rectangle
+            if (!this.dragging){
 
-                    touch_y_avg = this.touches[0].touch_y + this.touches[1].touch_y
-                    touch_y_avg /= 2
-                    this.select_rect = [touch_x_avg, touch_y_avg,
-                                    touch_x_avg, touch_y_avg];
+                // if there are touches, then we evalute the touches first, and we decide
+                // whether we are panning or selecting based on the number of touches.
+                if (this.touches) {
+                    if (this.touches.length == 1) {
+                        this.panning = true;
+                        this.set_cursor_grid(1);
+                        this.drag_x = this.cursor_x;
+                        this.drag_y = this.cursor_y;  
+                        $(this.canvas).addClass('jade-panning');
+                    } else {
+                        // if there are more than one touchp points, or if the user is 
+                        // inputting 2 or more fingers to drag, then we are doing a selection
+                        // rectangle
+                        touch_x_avg = this.touches[0].touch_x + this.touches[1].touch_x
+                        touch_x_avg /= 2
 
+                        touch_y_avg = this.touches[0].touch_y + this.touches[1].touch_y
+                        touch_y_avg /= 2
+                        this.select_rect = [touch_x_avg, touch_y_avg,
+                                        touch_x_avg, touch_y_avg];
+
+                    }
                 }
-            }
 
-            // else if there's nothing to drag, set up a selection rectangle
-            else if (!this.dragging) {
-                this.select_rect = [this.mouse_x, this.mouse_y,
-                                    this.mouse_x, this.mouse_y];
-            }
+                // else if there's nothing to drag, set up a selection rectangle
+                else if (!this.dragging) {
+                    this.select_rect = [this.mouse_x, this.mouse_y,
+                                        this.mouse_x, this.mouse_y];
+                }
+            }   
         } else if (!this.dragging) {
             // shift-click on background starts a pan
             this.panning = true;
@@ -1511,6 +1518,8 @@ jade_defs.top_level = function(jade) {
             // see how far we moved
             var dx = this.cursor_x - this.drag_x;
             var dy = this.cursor_y - this.drag_y;
+            // console.log(this.cursor_x+ " - "+ this.drag_x+ " = "+ dx);
+            // console.log(this.cursor_y+ " - "+ this.drag_y+ " = "+ dy);
             if (dx !== 0 || dy !== 0) {
                 // update position for next time
                 this.drag_x = this.cursor_x;
@@ -1546,15 +1555,6 @@ jade_defs.top_level = function(jade) {
                 // update position for next time
                 this.drag_x = this.cursor_x;
                 this.drag_y = this.cursor_y;
-//
-//                 dx = DELTA_PAN * Math.round(dx/DELTA_PAN);
-//                 dy = DELTA_PAN * Math.round(dy/DELTA_PAN);
-//                 var temp_x = this.origin_x - dx;
-//                 var temp_y = this.origin_y - dy;
-//                 if (temp_x > this.origin_min * this.grid && temp_x < this.origin_max * this.grid) 
-//                     this.origin_x = temp_x;
-//                 if (temp_y > this.origin_min * this.grid && temp_y < this.origin_max * this.grid) 
-//                     this.origin_y = temp_y;
                 var nx = this.origin_x - dx;
                 var ny = this.origin_y - dy;
                 if (nx > this.origin_min * this.grid && nx < this.origin_max * this.grid &&
