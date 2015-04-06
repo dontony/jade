@@ -1443,6 +1443,9 @@ jade_defs.top_level = function(jade) {
         // give all components a shot at processing the selection event
         var which = -1;
         var diagram = this; // for closure
+        this.dragging = false;
+        this.panning = false;
+        $(this.canvas).removeClass('jade-panning');
         this.aspect.map_over_components(function(c, i) {
             if (c.select(diagram.aspect_x, diagram.aspect_y, shiftKey)) {
                 if (c.selected) {

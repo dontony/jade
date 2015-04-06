@@ -47,6 +47,7 @@ jade_defs.schematic_view = function(jade) {
             .mousedown(schematic_mouse_down)
             .dblclick(schematic_double_click)
             .keydown(schematic_key_down);
+
         console.log($(this.diagram.canvas));
 
         $(this.diagram.canvas)
@@ -1433,7 +1434,7 @@ jade_defs.schematic_view = function(jade) {
                 .mouseup(part_mouse_up)
                 .bind("touchstart", part_touch_start)
                 .bind("touchend", part_touch_end)
-                // .bind("touchmove", part_touch_move);
+                .bind("touchmove", part_touch_move);
 
             // you can only edit parts in the parts bin if in hierarchical mode
             if (parts_bin.editor.jade.configuration.hierarchical && part.component.can_view()) {
@@ -1601,6 +1602,19 @@ jade_defs.schematic_view = function(jade) {
         c.fillText(text, xx, yy);
     };
 
+    Part.prototype.event_coords = function(event, start_touch){
+        var pos = $(event.target).offset();
+        if (start_touch){
+            this.start_touch_x = event.originalEvent.touches[0].pageX - pos.left;
+            this.start_touch_y = event.originalEvent.touches[0].pageY - pos.top;
+            console.log(this.start_touch_x + ", " + this.start_touch_y);
+        }
+        else {
+            this.touch_x = event.originalEvent.touches[0].pageX - pos.left;
+            this.touch_y = event.originalEvent.touches[0].pageY - pos.top;
+            console.log(this.touch_x + ", " + this.touch_y);
+        }
+    };
 // part.canvas
 //                 .mouseover(part_enter)
 //                 .mouseout(part_leave)
@@ -1615,7 +1629,8 @@ jade_defs.schematic_view = function(jade) {
         event.preventDefault();
         console.log("PART TOUCH START");
         var part = event.target.part;
-        console.log(part);
+        part.event_coords(event, true);   
+
         var tip = part.component.module.properties.tool_tip;
         if (tip !== undefined) 
             tip = tip.value;
@@ -1633,24 +1648,62 @@ jade_defs.schematic_view = function(jade) {
     function part_touch_end(event) {
         //modeled after a mouseleave and a mouseup
         console.log("PART TOUCH END");
-        event.preventDefault();
+        var pos = $(event.target).offset();
         var part = event.target.part;
+        console.log(part);
+        event.preventDefault();
+        if(part.touch_x && part.touch_x < 0){
+            // the user has dragged the item from the components bin to what is presumably the schematic
+            // due to the schematic being left of the components, therefore a negative x direction
+            console.log("triggered a mouse enter");
+            //adjust the previous original touch, so the most recent touch event
+            // so that it's the most recent event
+            // (touchend does not save the originalEvent)
+            event.originalEvent = part.originalEvent;
+            var diagram = part.diagram;
+            //$(part.diagram.canvas).trigger("mouseenter", event);
+            var new_part = diagram.new_part;
+            diagram.new_part = undefined;
+            part.select(false);
 
+            // unselect everything else in the diagram, add part and select it
+            diagram.unselect_all(-1);
+            diagram.redraw_background(); // so we see any components that got unselected
+
+            // start of a new action
+            diagram.aspect.start_action();
+
+            // make a clone of the component in the parts bin
+            diagram.set_cursor_grid(new_part.component.required_grid);
+            diagram.event_coords(event);  // set up cursor coords based on new grid
+            new_part = new_part.component.clone(diagram.cursor_x, diagram.cursor_y);
+            new_part.add(diagram.aspect); // add it to aspect
+            new_part.set_select(true);
+
+            // and start dragging it
+            diagram.drag_begin();
+            
+            diagram.redraw();
+            diagram.canvas.focus(); // capture key strokes
+            return false;
+        }
+        
         part.select(false);
         part.diagram.new_part = undefined;
 
         part.diagram.message('');
         return false;
     }
-    /*function part_touch_move(event) {
+    function part_touch_move(event) {
         event.preventDefault();
         var part = event.target.part;
-
-        part.select(false);
-        part.diagram.new_part = undefined;
-        return false;
+        part.event_coords(event, false);
+        part.originalEvent = event.originalEvent;
+        // part.select(false);
+        // part.diagram.new_part = undefined;
+        // return false;
     }
-    */
+
     function part_enter(event) {
         var part = event.target.part;
 
