@@ -48,13 +48,40 @@ jade_defs.schematic_view = function(jade) {
             .dblclick(schematic_double_click)
             .keydown(schematic_key_down);
 
-        console.log($(this.diagram.canvas));
+        // $(this.diagram.canvas)
+        //     .bind("touchstart", schematic_touch_start)
+        //     .bind("touchend", schematic_touch_end)
+        //     .bind("touchmove", schematic_touch_move);
 
-        $(this.diagram.canvas)
-            .bind("touchstart", schematic_touch_start)
-            .bind("touchend", schematic_touch_end)
-            .bind("touchmove", schematic_touch_move);
+        //instantiate the touch helper that we have, hammer
+        var schem_hammer = new Hammer(this.diagram.canvas);
+        //make sure that the helper allows us to use all pan directions
+        schem_hammer.get("pan").set({ direction: Hammer.DIRECTION_ALL });
 
+        schem_hammer.on("tap", function(event) {
+            if(event.pointerType == "touch")
+                schem_hammer_tap(event)
+            else
+                schematic_mouse_down(event.srcEvent);
+        });
+        schem_hammer.on("press", function(event) {
+            if(event.pointerType == "touch")
+                schem_hammer_press(event)
+            else
+                console.log("false long press");
+        });
+        schem_hammer.on("panstart", function(event) {
+            if(event.pointerType == "touch")
+                schem_hammer_panstart(event)
+        });
+        schem_hammer.on("panmove panend pancancel", function(event) {
+            if(event.pointerType == "touch")
+                schem_hammer_panmove(event)
+            else
+                console.log("false long press");
+        });
+        schem_hammer.on("pinch", schem_hammer_pinch);
+        
 
         this.toolbar = new jade.Toolbar(this.diagram);
 
@@ -335,6 +362,123 @@ jade_defs.schematic_view = function(jade) {
     //
     ////////////////////////////////////////////////////////////////////////////////
 
+    function schem_hammer_tap(event){
+        event.preventDefault();
+        //event.originalEvent.preventDefault();
+        console.log("SCHEM HAMMER TAP");
+        //console.log(event);
+        var diagram = event.target.diagram;
+        diagram.event_coords(event);
+        // console.log("MOUSE " +diagram.mouse_x + ", " + diagram.mouse_y);
+        // console.log("ASPECT " + diagram.aspect_x + ", " + diagram.aspect_y);
+        // console.log("CURSOR " + diagram.cursor_x + ", " + diagram.cursor_y);
+        // // see if user is trying to pan or zoom
+        if (diagram.pan_zoom()) return false;
+
+        diagram.start_select(event.shiftKey, true);
+    }
+
+    function schem_hammer_press(event){
+        event.preventDefault();
+        //event.originalEvent.preventDefault();
+        console.log("SCHEM HAMMER LONG_PRESS");
+        // console.log(event);
+        var diagram = event.target.diagram;
+        diagram.event_coords(event);
+
+        diagram.start_select(event.shiftKey, true);
+        // console.log(diagram.cursor_x + ", " + diagram.cursor_y);
+        if (diagram.aspect && !diagram.aspect.read_only()) {
+            // see if we long pressed a component.  If so, edit it's properties
+            diagram.aspect.map_over_components(function(c) {
+                    if (c.edit_properties(diagram, diagram.aspect_x, diagram.aspect_y)) 
+                        return true;
+                    return false;
+                });
+        }
+    }
+    function schem_hammer_panstart(event){
+        event.preventDefault();
+        //event.originalEvent.preventDefault();
+        console.log("SCHEM HAMMER PANSTART");
+        // console.log(event);
+        var diagram = event.target.diagram;
+        diagram.event_coords(event);
+        console.log(diagram.cursor_x + ", " + diagram.cursor_y);
+        // TODO how to increase size of connection point
+        // is mouse over a connection point?  If so, start dragging a wire
+        var dx = Math.abs(diagram.aspect_x - diagram.cursor_x);
+        var dy = Math.abs(diagram.aspect_y - diagram.cursor_y);
+        var cplist = diagram.aspect.connection_points[diagram.cursor_x + ',' + diagram.cursor_y];
+
+        // because it's a touch start, we increase the size of the connection point
+        // TODO increase the physical size
+        // TODO increase the size relative to the diagram zoom level.
+        if (!diagram.aspect.read_only() && 
+                dx <= jade.model.connection_point_radius + 4 && 
+                dy <= jade.model.connection_point_radius + 4 && 
+                cplist && !event.shiftKey) {
+            diagram.unselect_all(-1);
+            diagram.redraw_background();
+            diagram.wire = [diagram.cursor_x, diagram.cursor_y, diagram.cursor_x, diagram.cursor_y];
+        } else {
+            diagram.start_select(event.shiftKey, true);
+        }
+    }
+    function schem_hammer_panmove(event){
+        event.preventDefault();
+        //event.originalEvent.preventDefault();
+        console.log("SCHEM HAMMER PAN MOVE");
+        var diagram = event.target.diagram;
+        diagram.event_coords(event);
+        console.log(event);
+        if(event.type !== "panend") {
+            if (diagram.wire) {
+                // update new wire end point
+                diagram.wire[2] = diagram.cursor_x;
+                diagram.wire[3] = diagram.cursor_y;
+                diagram.redraw();
+            } else {
+                diagram.mouse_move();
+            }
+        } else {
+            console.log("Event is final panmove");
+            // drawing a new wire
+            if (diagram.wire) {
+                var r = diagram.wire;
+                diagram.wire = undefined;
+
+                if (r[0] != r[2] || r[1] != r[3]) {
+                    // insert wire component
+                    diagram.aspect.start_action();
+                    var wire = diagram.aspect.add_wire(r[0], r[1], r[2], r[3], 0);
+                    wire.selected = true;
+                    diagram.aspect.end_action();
+                    diagram.redraw_background();
+                }
+                else diagram.redraw();
+            } else {
+                var current_time = new Date().getTime();
+                if (touch_start_time &&
+                     (current_time - touch_start_time) < duration) {
+                    console.log("NOT LONG TAP ");
+                    clearTimeout(long_touch_timeout);
+                }
+                diagram.mouse_up(event.shiftKey, true);
+            }
+
+        }
+        return false;
+    }
+    function schem_hammer_pinch(event){
+        event.preventDefault();
+        //event.originalEvent.preventDefault();
+        console.log("SCHEM HAMMER PINCH");
+        var diagram = event.target.diagram;
+        diagram.event_coords(event);
+        
+    }
+
     var touch_start_time = 0;
     var long_touch_callback = {};
     var duration = 500; // 0.5 seconds
@@ -355,8 +499,6 @@ jade_defs.schematic_view = function(jade) {
         var dx = Math.abs(diagram.aspect_x - diagram.cursor_x);
         var dy = Math.abs(diagram.aspect_y - diagram.cursor_y);
         var cplist = diagram.aspect.connection_points[diagram.cursor_x + ',' + diagram.cursor_y];
-        // console.log(diagram.cursor_x + ',' + diagram.cursor_y);
-        // console.log ( {dx: dx, dy: dy, rad: jade.model.connection_point_radius, cplist: cplist });
 
         // because it's a touch start, we increase the size of the connection point
         // TODO increase the physical size
@@ -370,6 +512,8 @@ jade_defs.schematic_view = function(jade) {
             diagram.wire = [diagram.cursor_x, diagram.cursor_y, diagram.cursor_x, diagram.cursor_y];
         }
         else diagram.start_select(event.shiftKey, true);
+        
+        // LONG PRESS timeout code
         touch_start_time = new Date().getTime();
 
         long_touch_timeout = setTimeout(function() {
@@ -400,14 +544,9 @@ jade_defs.schematic_view = function(jade) {
             diagram.wire[3] = diagram.cursor_y;
             diagram.redraw();
         } else {
-            //TODO add a longpress clause here
             diagram.mouse_move();
         }
-        //mouse/touch moved, so we nullify the timer, because a longpress only wanted 
-        // to be stationary
-        touch_start_time = null;
-        clearTimeout(long_touch_timeout);
-        //event.preventDefault();
+        
         return false;
     }
 

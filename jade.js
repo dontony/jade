@@ -1296,7 +1296,7 @@ jade_defs.top_level = function(jade) {
         if(event.pageX && event.pageY) {
             this.mouse_x = event.pageX - pos.left;
             this.mouse_y = event.pageY - pos.top;
-        } else {
+        } else if (event.originalEvent && event.originalEvent.touches) {
             //it is a touch event, so we need to access the original touch
             // we are now only accounting for one touch, so out of the possible
             // touches on the stroke, we only get the first one.
@@ -1309,6 +1309,24 @@ jade_defs.top_level = function(jade) {
                 new_touch = {};
                 new_touch.touch_x = event.originalEvent.touches[touch_count].pageX - pos.left
                 new_touch.touch_y = event.originalEvent.touches[touch_count].pageY - pos.top
+                this.touches[touch_count] = new_touch;
+                touch_count++;
+            }
+            if (this.touches.length > 1) {
+                console.log("MULTIPLE TOUCHES!");
+                console.log(this.touches);
+            }
+        } else if (event.pointers) {
+            //Hammer pointer objects are analogous to touches
+            this.mouse_x = event.pointers[0].pageX - pos.left;
+            this.mouse_y = event.pointers[0].pageY - pos.top;
+
+            this.touches = [];
+            var touch_count = 0;
+            while (touch_count < event.pointers.length) {
+                new_touch = {};
+                new_touch.touch_x = event.pointers[touch_count].pageX - pos.left
+                new_touch.touch_y = event.pointers[touch_count].pageY - pos.top
                 this.touches[touch_count] = new_touch;
                 touch_count++;
             }
