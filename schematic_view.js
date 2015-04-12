@@ -410,13 +410,14 @@ jade_defs.schematic_view = function(jade) {
         var dx = Math.abs(diagram.aspect_x - diagram.cursor_x);
         var dy = Math.abs(diagram.aspect_y - diagram.cursor_y);
         var cplist = diagram.aspect.connection_points[diagram.cursor_x + ',' + diagram.cursor_y];
-
+        console.log(diagram.cursor_x + ',' + diagram.cursor_y);
+        console.log ( {dx: dx, dy: dy, rad: jade.model.connection_point_radius, cplist: cplist });
         // because it's a touch start, we increase the size of the connection point
         // TODO increase the physical size
         // TODO increase the size relative to the diagram zoom level.
         if (!diagram.aspect.read_only() && 
-                dx <= jade.model.connection_point_radius + 4 && 
-                dy <= jade.model.connection_point_radius + 4 && 
+                dx <= jade.model.connection_point_radius + 8 && 
+                dy <= jade.model.connection_point_radius + 8 && 
                 cplist && !event.shiftKey) {
             diagram.unselect_all(-1);
             diagram.redraw_background();
@@ -476,7 +477,7 @@ jade_defs.schematic_view = function(jade) {
         console.log("SCHEM HAMMER PINCH");
         var diagram = event.target.diagram;
         diagram.event_coords(event);
-        
+        diagram.zoomin();
     }
 
     var touch_start_time = 0;
