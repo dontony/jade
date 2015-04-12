@@ -11,7 +11,7 @@ jade_defs.icons = function(jade) {
 
     jade.icons.close_icon = '<span class="fa fa-times fa-inverse"></span>';
 
-    jade.icons.resize_icon = '<svg width="16" height="16" viewBox="0 0 16 16">' +
+    jade.icons.resize_icon = '<svg width="20" height="20" viewBox="0 0 16 16">' +
         '<path d="M 10 13.5 l 3 -3 m 0 -3 l -6 6 m -3 0 l 9 -9" stroke="black" stroke-width="0.5"/>' +
         '</svg>';
 
@@ -37,19 +37,19 @@ jade_defs.icons = function(jade) {
 
     jade.icons.down_icon = '<span class="fa fa-fw fa-level-down"></span>';
 
-    jade.icons.ground_icon = '<svg width="16" height="16" viewBox="0 0 16 16">' +
+    jade.icons.ground_icon = '<svg width="20" height="20" viewBox="0 0 16 16">' +
         '<path d="M 8.5 3.5 v 7 h -5 l 5 5 l 5 -5 h -5" stroke="black" fill="transparent"/>' +
         '</svg>';
 
-    jade.icons.vdd_icon = '<svg width="16" height="16" viewBox="0 0 16 16">' +
+    jade.icons.vdd_icon = '<svg width="20" height="20" viewBox="0 0 16 16">' +
         '<path d="M 8.5 5.5 v 8 M 3.5 5.5 h 10" stroke="black" fill="transparent"/>' +
         '</svg>';
 
-    jade.icons.port_icon = '<svg width="16" height="16" viewBox="0 0 16 16">' +
+    jade.icons.port_icon = '<svg width="20" height="20" viewBox="0 0 16 16">' +
         '<path d="M 1.5 6.5 h 7 l 4 4 l -4 4 h -7 v -8 m 11 4 h 5" stroke="black" fill="transparent"/>' +
         '</svg>';
 
-    jade.icons.jumper_icon = '<svg width="16" height="16" viewBox="0 0 16 16">' +
+    jade.icons.jumper_icon = '<svg width="20" height="20" viewBox="0 0 16 16">' +
         '<path d="M 4 12 C 4 6, 12 6, 12 12" stroke="black" fill="transparent"/>' +
         '<circle cx="4" cy="12" r="1" stroke="black"/>' +
         '<circle cx="12" cy="12" r="1" stroke="black"/>' +
