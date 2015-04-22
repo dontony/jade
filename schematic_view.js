@@ -56,6 +56,8 @@ jade_defs.schematic_view = function(jade) {
         //instantiate the touch helper that we have, hammer
         var schem_hammer = new Hammer(this.diagram.canvas);
         //make sure that the helper allows us to use all pan directions
+        schem_hammer.get("pan").set({ direction: Hammer.DIRECTION_ALL, 
+        pointers: 0 });
         schem_hammer.get("pan").set({ direction: Hammer.DIRECTION_ALL });
 
         schem_hammer.on("tap", function(event) {
