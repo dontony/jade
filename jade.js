@@ -827,6 +827,9 @@ jade_defs.top_level = function(jade) {
             this.origin_x += ($(this.canvas).width() / 2) * (1.0 / this.scale - 1.0 / nscale);
             this.origin_y += ($(this.canvas).height() / 2) * (1.0 / this.scale - 1.0 / nscale);
             this.scale = nscale;
+            // jade.model.connection_point_radius -= 0.5;
+            // console.log("connection_point_radius: "+ jade.model.connection_point_radius);
+            // console.log("scale: "+ this.scale);
             this.redraw_background();
         }
     };
@@ -839,6 +842,10 @@ jade_defs.top_level = function(jade) {
             this.origin_x += (this.canvas.width / 2) * (1.0 / this.scale - 1.0 / nscale);
             this.origin_y += (this.canvas.height / 2) * (1.0 / this.scale - 1.0 / nscale);
             this.scale = nscale;
+            // jade.model.connection_point_radius += 0.5;
+            // console.log("connection_point_radius: "+ jade.model.connection_point_radius);
+            // console.log("scale: "+ this.scale);
+            
             this.redraw_background();
         }
     };
@@ -967,6 +974,7 @@ jade_defs.top_level = function(jade) {
     // determine nearest grid point
     Diagram.prototype.on_grid = function(v, grid) {
         if (grid === undefined) grid = this.cursor_grid;
+        //console.log("GRID:  "+grid);
         if (v < 0) return Math.floor((-v + (grid >> 1)) / grid) * -grid;
         else return Math.floor((v + (grid >> 1)) / grid) * grid;
     };
@@ -1296,40 +1304,28 @@ jade_defs.top_level = function(jade) {
         if(event.pageX && event.pageY) {
             this.mouse_x = event.pageX - pos.left;
             this.mouse_y = event.pageY - pos.top;
-        } else if (event.originalEvent && event.originalEvent.touches) {
-            //it is a touch event, so we need to access the original touch
-            // we are now only accounting for one touch, so out of the possible
-            // touches on the stroke, we only get the first one.
-            this.mouse_x = event.originalEvent.touches[0].pageX - pos.left;
-            this.mouse_y = event.originalEvent.touches[0].pageY - pos.top;
-
-            this.touches = [];
-            var touch_count = 0;
-            while (touch_count < event.originalEvent.touches.length) {
-                new_touch = {};
-                new_touch.touch_x = event.originalEvent.touches[touch_count].pageX - pos.left
-                new_touch.touch_y = event.originalEvent.touches[touch_count].pageY - pos.top
-                this.touches[touch_count] = new_touch;
-                touch_count++;
-            }
-            if (this.touches.length > 1) {
-                console.log("MULTIPLE TOUCHES!");
-                console.log(this.touches);
-            }
         } else if (event.pointers) {
             //Hammer pointer objects are analogous to touches
             this.mouse_x = event.pointers[0].pageX - pos.left;
             this.mouse_y = event.pointers[0].pageY - pos.top;
 
             this.touches = [];
-            var touch_count = 0;
+            var touch_count = 0, touch_x_avg = 0, touch_y_avg = 0;
             while (touch_count < event.pointers.length) {
                 new_touch = {};
                 new_touch.touch_x = event.pointers[touch_count].pageX - pos.left
                 new_touch.touch_y = event.pointers[touch_count].pageY - pos.top
                 this.touches[touch_count] = new_touch;
+                touch_x_avg += new_touch.touch_x;
+                touch_y_avg += new_touch.touch_y;
                 touch_count++;
             }
+            // calculates the center of the multiple touches
+            // in the case of a select drag, we use it as the corners of the rect
+            touch_x_avg /= touch_count;
+            touch_y_avg /= touch_count;
+            this.touch_x_avg = touch_x_avg;
+            this.touch_y_avg = touch_y_avg;
             if (this.touches.length > 1) {
                 console.log("MULTIPLE TOUCHES!");
                 console.log(this.touches);
@@ -1341,7 +1337,7 @@ jade_defs.top_level = function(jade) {
         this.cursor_y = this.on_grid(this.aspect_y);
         // console.log("Mouse: " + this.mouse_x + ", " + this.mouse_y);
         // console.log("Aspect: " + this.aspect_x + ", " + this.aspect_y);
-        // console.log("Cursor: " + this.cursor_x + ", " + this.cursor_y);
+        console.log("Cursor: " + this.cursor_x + ", " + this.cursor_y);
     };
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -1496,6 +1492,7 @@ jade_defs.top_level = function(jade) {
                 if (this.touches) {
                     if (this.touches.length == 1) {
                         this.panning = true;
+                        // make the grid based on unit points
                         this.set_cursor_grid(1);
                         this.drag_x = this.cursor_x;
                         this.drag_y = this.cursor_y;  
@@ -1504,13 +1501,8 @@ jade_defs.top_level = function(jade) {
                         // if there are more than one touchp points, or if the user is 
                         // inputting 2 or more fingers to drag, then we are doing a selection
                         // rectangle
-                        touch_x_avg = this.touches[0].touch_x + this.touches[1].touch_x
-                        touch_x_avg /= 2
-
-                        touch_y_avg = this.touches[0].touch_y + this.touches[1].touch_y
-                        touch_y_avg /= 2
-                        this.select_rect = [touch_x_avg, touch_y_avg,
-                                        touch_x_avg, touch_y_avg];
+                        this.select_rect = [this.touch_x_avg, this.touch_y_avg,
+                                        this.touch_x_avg, this.touch_y_avg];
 
                     }
                 }
@@ -1555,14 +1547,8 @@ jade_defs.top_level = function(jade) {
         else if (this.select_rect) {
             // update moving corner of selection rectangle
             if(this.touches) {
-                touch_x_avg = this.touches[0].touch_x + this.touches[1].touch_x
-                touch_x_avg /= 2
-
-                touch_y_avg = this.touches[0].touch_y + this.touches[1].touch_y
-                touch_y_avg /= 2
-
-                this.select_rect[2] = touch_x_avg;
-                this.select_rect[3] = touch_y_avg;
+                this.select_rect[2] = this.touch_x_avg;
+                this.select_rect[3] = this.touch_y_avg;
             } else {
                 this.select_rect[2] = this.mouse_x;
                 this.select_rect[3] = this.mouse_y;
